@@ -7,13 +7,13 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": "bin/index.js",
-  "homepage": "https://frourio.io",
+  "homepage": "https://github.com/SegaraRai/frourio",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/frouriojs/frourio.git"
+    "url": "git+https://github.com/SegaraRai/frourio.git"
   },
   "bugs": {
-    "url": "https://github.com/frouriojs/frourio/issues"
+    "url": "https://github.com/SegaraRai/frourio/issues"
   },
   "files": [
     "dist"
