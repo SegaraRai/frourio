@@ -16,6 +16,6 @@ const hooks = defineHooks(() => ({
 export { hooks, AdditionalRequest }
 
 export default defineController(() => ({
-  get: async () => ({ status: 200, body: [{ id: 1, name: 'aa' }] }),
+  get: async () => ({ status: 200, body: [{ id: 1, name: 'aa', age: 20 }] }),
   post: () => ({ status: 204 })
 }))

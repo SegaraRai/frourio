@@ -1,14 +1,18 @@
+import { Type } from 'class-transformer'
 import {
-  IsNumberString,
-  IsBooleanString,
-  IsBoolean,
-  IsPort,
-  IsInt,
-  MaxLength,
-  IsString,
   Allow,
+  ArrayNotEmpty,
+  Equals,
+  IsBoolean,
+  IsBooleanString,
+  IsInt,
+  IsNumberString,
+  IsObject,
   IsOptional,
-  ArrayNotEmpty
+  IsPort,
+  IsString,
+  MaxLength,
+  ValidateNested
 } from 'class-validator'
 import type { ReadStream } from 'fs'
 
@@ -58,6 +62,45 @@ export class UserInfo {
 
   @MaxLength(20)
   name: string
+
+  @IsInt()
+  age: number
+}
+
+export class UserInfoPatchName {
+  @Equals('name')
+  type: 'name'
+
+  @MaxLength(20)
+  name: string
+}
+
+export class UserInfoPatchAge {
+  @Equals('age')
+  type: 'age'
+
+  @IsInt()
+  age: number
+}
+
+export class UserInfoPatchWrapper {
+  // Boolean is a dummy class, which will be used as default class when no suitable subTypes found
+  // invalid types are rejected by combining this with @IsObject
+  @IsObject({
+    message: 'invalid type'
+  })
+  @ValidateNested()
+  @Type(() => Boolean, {
+    keepDiscriminatorProperty: true,
+    discriminator: {
+      property: 'type',
+      subTypes: [
+        { value: UserInfoPatchName, name: 'name' },
+        { value: UserInfoPatchAge, name: 'age' }
+      ]
+    }
+  })
+  '!payload': UserInfoPatchName | UserInfoPatchAge
 }
 
 export class MultiForm {
@@ -71,6 +114,9 @@ export class MultiForm {
   @IsString()
   name: string
 
+  // class-transformer always tries to transform nested object, even if there are no decorators on it
+  // there is no such thing like @Ignore decorator available natively ;(
+  // see also. https://stackoverflow.com/q/66662904
   @Allow()
   icon: Blob
 

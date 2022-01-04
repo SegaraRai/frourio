@@ -34,6 +34,7 @@ const api = <T>({ baseURL, fetch }: AspidaClient<T>) => {
   const GET = 'GET'
   const POST = 'POST'
   const PUT = 'PUT'
+  const PATCH = 'PATCH'
 
   return {
     $500: {
@@ -109,6 +110,10 @@ const api = <T>({ baseURL, fetch }: AspidaClient<T>) => {
             fetch<Methods8['get']['resBody']>(prefix, prefix1, GET, option).json(),
           $get: (option?: { config?: T }) =>
             fetch<Methods8['get']['resBody']>(prefix, prefix1, GET, option).json().then(r => r.body),
+          patch: (option: { body: Methods8['patch']['reqBody'], config?: T }) =>
+            fetch(prefix, prefix1, PATCH, option).send(),
+          $patch: (option: { body: Methods8['patch']['reqBody'], config?: T }) =>
+            fetch(prefix, prefix1, PATCH, option).send().then(r => r.body),
           $path: () => `${prefix}${prefix1}`
         }
       },

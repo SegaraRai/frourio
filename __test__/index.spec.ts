@@ -136,17 +136,22 @@ test('PUT: JSON', async () => {
 test('POST: formdata', async () => {
   const port = '3000'
   const fileName = 'tsconfig.json'
-  const res1 = await client.$post({
-    query: {
-      requiredNum: 0,
-      requiredNumArr: [],
-      id: '1',
-      disable: 'true',
-      bool: false,
-      boolArray: []
-    },
-    body: { port, file: fs.createReadStream(fileName) }
-  })
+  const res1 = await client
+    .$post({
+      query: {
+        requiredNum: 0,
+        requiredNumArr: [],
+        id: '1',
+        disable: 'true',
+        bool: false,
+        boolArray: []
+      },
+      body: { port, file: fs.createReadStream(fileName) }
+    })
+    .catch(e => {
+      console.log(e)
+      return Promise.reject(e)
+    })
   expect(res1.port).toBe(port)
   expect(res1.fileName).toBe(fileName)
 
@@ -200,6 +205,89 @@ test('POST: 400', async () => {
   await expect(
     axios.post(`${baseURL}/multiForm`, form, {
       headers: form.getHeaders()
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+})
+
+test('PATCH: wrapped validation', async () => {
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'age', age: 12 }
+    })
+  ).resolves.toHaveProperty('status', 204)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'name', name: 'foo' }
+    })
+  ).resolves.toHaveProperty('status', 204)
+
+  // note that extraneous properties are allowed
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'age' as any, age: 12, name: 'foo' }
+    })
+  ).resolves.toHaveProperty('status', 204)
+})
+
+test('PATCH: 400', async () => {
+  await expect(
+    client.users._userId(123).patch({
+      body: { age: 12, name: 'foo' } as any
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'age', age: '12' as any }
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'name', name: ['foo'] as any }
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'age' as any, age: '12' as any, name: 'foo' }
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'name' as any, age: 12, name: 123 as any }
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: { type: 'invalid' as any, age: 12, name: 'foo' }
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: null as any
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: true as any
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: ['foo'] as any
+    })
+  ).rejects.toHaveProperty('response.status', 400)
+
+  await expect(
+    client.users._userId(123).patch({
+      body: 'foo' as any
     })
   ).rejects.toHaveProperty('response.status', 400)
 })

@@ -5,6 +5,8 @@ import createDefaultFiles from './createDefaultFilesIfNotExists'
 import { addPrettierIgnore } from './addPrettierIgnore'
 import type { LowerHttpMethod } from 'aspida'
 
+const VALIDATOR_PAYLOAD_PROP_REGEX = /^!payload$/
+
 type HooksEvent = 'onRequest' | 'preParsing' | 'preValidation' | 'preHandler'
 type Param = [string, string]
 
@@ -389,6 +391,13 @@ export default (appDir: string, project: string) => {
         results.push(
           methods
             .map(m => {
+              interface ValidateInfo {
+                name: string
+                type: ts.Type
+                wrapperProp: string | null
+                hasQuestion: boolean
+              }
+
               const props = m.valueDeclaration
                 ? checker.getTypeOfSymbolAtLocation(m, m.valueDeclaration).getProperties()
                 : []
@@ -401,16 +410,60 @@ export default (appDir: string, project: string) => {
                 { name: 'headers', val: props.find(p => p.name === 'reqHeaders') }
               ]
                 .filter((prop): prop is { name: string; val: ts.Symbol } => !!prop.val)
-                .map(({ name, val }) => ({
-                  name,
-                  type:
-                    val.valueDeclaration &&
-                    checker.getTypeOfSymbolAtLocation(val, val.valueDeclaration),
-                  hasQuestion: !!val.declarations?.some(
+                .map(({ name, val }): ValidateInfo | null => {
+                  const { valueDeclaration } = val
+
+                  if (!valueDeclaration) {
+                    return null
+                  }
+
+                  const hasQuestion = !!val.declarations?.some(
                     d => d.getChildAt(1).kind === ts.SyntaxKind.QuestionToken
                   )
-                }))
-                .filter(({ type }) => type?.isClass())
+
+                  const type: ts.Type | undefined = checker.getTypeOfSymbolAtLocation(
+                    val,
+                    valueDeclaration
+                  )
+
+                  // e.g. { reqBody: ValidatorClass }
+                  if (type.isClass()) {
+                    return {
+                      name,
+                      type,
+                      wrapperProp: null,
+                      hasQuestion
+                    }
+                  }
+
+                  // e.g. { reqBody: ValidatorClassWrapper['!payload'] }
+                  // see also: https://github.com/typestack/class-transformer/issues/223
+                  if (valueDeclaration?.kind === ts.SyntaxKind.PropertySignature) {
+                    const propSignatureType = (valueDeclaration as ts.PropertySignature).type
+                    if (propSignatureType?.kind === ts.SyntaxKind.IndexedAccessType) {
+                      const { objectType: objectTypeNode, indexType: indexTypeNode } =
+                        propSignatureType as ts.IndexedAccessTypeNode
+                      const objectType = checker.getTypeAtLocation(objectTypeNode)
+                      if (objectType.isClass()) {
+                        const indexType = checker.getTypeAtLocation(indexTypeNode)
+                        if (
+                          indexType.isStringLiteral() &&
+                          VALIDATOR_PAYLOAD_PROP_REGEX.test(indexType.value)
+                        ) {
+                          return {
+                            name,
+                            type: objectType,
+                            wrapperProp: indexType.value,
+                            hasQuestion
+                          }
+                        }
+                      }
+                    }
+                  }
+
+                  return null
+                })
+                .filter((value): value is ValidateInfo => !!value)
 
               const reqFormat = props.find(p => p.name === 'reqFormat')
               const isFormData =
@@ -482,9 +535,11 @@ ${validateInfo
     v.type
       ? `          ${
           v.hasQuestion ? `Object.keys(req.${v.name} as any).length ? ` : ''
-        }validateOrReject(Object.assign(new Validators.${checker.typeToString(v.type)}(), req.${
-          v.name
-        } as any), validatorOptions)${v.hasQuestion ? ' : null' : ''}`
+        }validateOrReject(plainToInstance(Validators.${checker.typeToString(v.type)}, ${
+          v.wrapperProp ? `{ ${JSON.stringify(v.wrapperProp)}: ` : ''
+        }req.${v.name}${v.wrapperProp ? ` }` : ''} as any, transformerOptions), validatorOptions)${
+          v.hasQuestion ? ' : null' : ''
+        }`
       : ''
   )
   .join(',\n')}\n        ])`
