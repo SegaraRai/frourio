@@ -1,5 +1,5 @@
 {
-  "name": "@SegaraRai/frourio",
+  "name": "@segararai/frourio",
   "version": "0.25.1-fork",
   "description": "Fast and type-safe full stack framework, for TypeScript",
   "author": "Solufa <solufa2020@gmail.com>",
@@ -23,9 +23,6 @@
     "aspida",
     "fastify"
   ],
-  "publishConfig": {
-    "@SegaraRai:registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "dev": "npm run build && cd servers && aspida && node build.js",
     "build": "npm run rimraf -- dist && tsc -p tsconfig.build.json",
