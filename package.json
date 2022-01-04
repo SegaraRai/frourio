@@ -23,6 +23,9 @@
     "aspida",
     "fastify"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "npm run build && cd servers && aspida && node build.js",
     "build": "npm run rimraf -- dist && tsc -p tsconfig.build.json",
