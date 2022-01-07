@@ -211,23 +211,31 @@ test('POST: 400', async () => {
 
 test('PATCH: wrapped validation', async () => {
   await expect(
-    client.users._userId(123).patch({
+    client.users._userId(123).$patch({
       body: { type: 'age', age: 12 }
     })
-  ).resolves.toHaveProperty('status', 204)
+  ).resolves.toMatchObject({ type: 'age', age: 12 })
 
   await expect(
-    client.users._userId(123).patch({
+    client.users._userId(123).$patch({
       body: { type: 'name', name: 'foo' }
     })
-  ).resolves.toHaveProperty('status', 204)
+  ).resolves.toMatchObject({ type: 'name', name: 'foo' })
 
   // note that extraneous properties are allowed
   await expect(
-    client.users._userId(123).patch({
-      body: { type: 'age' as any, age: 12, name: 'foo' }
+    client.users._userId(123).$patch({
+      body: { type: 'age', age: 12, name: 'foo', unknownProp: 'bar' } as any
     })
-  ).resolves.toHaveProperty('status', 204)
+  ).resolves.toMatchObject({ type: 'age', age: 12, name: 'foo', unknownProp: 'bar' })
+})
+
+test('PATCH: transformed', async () => {
+  await expect(
+    client.users._userId(123).$patch({
+      body: { type: 'name', name: ' foo  ' }
+    })
+  ).resolves.toMatchObject({ type: 'name', name: 'foo' })
 })
 
 test('PATCH: 400', async () => {

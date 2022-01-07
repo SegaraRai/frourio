@@ -21,7 +21,7 @@ export default (input: string, project?: string) => {
   const hasOptionalQuery = controllers.includes(' callParserIfExistsQuery(')
   const hasNormalizeQuery = controllers.includes(' normalizeQuery')
   const hasTypedParams = controllers.includes(' createTypedParamsHandler(')
-  const hasValidator = controllers.includes(' validateOrReject(')
+  const hasValidator = controllers.includes(' transformAndValidate(')
   const hasMultipart = controllers.includes(' formatMultipartData(')
   const hasMethodToHandler = controllers.includes(' methodToHandler(')
   const hasAsyncMethodToHandler = controllers.includes(' asyncMethodToHandler(')
@@ -31,7 +31,7 @@ export default (input: string, project?: string) => {
     text: addPrettierIgnore(`/* eslint-disable */${
       hasValidator
         ? "\nimport 'reflect-metadata'" +
-          "\nimport { ClassTransformOptions, plainToInstance as _plainToInstance } from 'class-transformer'" +
+          "\nimport { ClassConstructor, ClassTransformOptions, plainToInstance as _plainToInstance } from 'class-transformer'" +
           "\nimport { validateOrReject as _validateOrReject, ValidatorOptions } from 'class-validator'"
         : ''
     }${
@@ -51,15 +51,16 @@ import type { FastifyInstance, RouteHandlerMethod${
     } } from 'fastify'
 
 export type FrourioOptions = {
-  basePath?: string
-${
-  hasValidator
-    ? '  transformer?: ClassTransformOptions\n' +
-      '  validator?: ValidatorOptions\n' +
-      '  plainToInstance?: typeof _plainToInstance\n' +
-      '  validateOrReject?: typeof _validateOrReject\n'
-    : ''
-}${hasMultipart ? '  multipart?: FastifyMultipartAttactFieldsToBodyOptions\n' : ''}}
+  basePath?: string${
+    hasValidator
+      ? `
+  transformer?: ClassTransformOptions
+  validator?: ValidatorOptions
+  plainToInstance?: typeof _plainToInstance
+  validateOrReject?: typeof _validateOrReject`
+      : ''
+  }
+${hasMultipart ? '  multipart?: FastifyMultipartAttactFieldsToBodyOptions\n' : ''}}
 
 type HttpStatusNoOk = 301 | 302 | 400 | 401 | 402 | 403 | 404 | 405 | 406 | 409 | 500 | 501 | 502 | 503 | 504 | 505
 
@@ -270,14 +271,20 @@ const formatMultipartData = (arrayTypeKeys: [string, boolean][]): preValidationH
       hasAsyncMethodToHandler ? genHandlerText(true) : ''
     }
 export default (fastify: FastifyInstance, options: FrourioOptions = {}) => {
-  const basePath = options.basePath ?? ''
-${
-  hasValidator
-    ? '  const transformerOptions: ClassTransformOptions = { enableCircularCheck: true, ...options.transformer }\n' +
-      '  const validatorOptions: ValidatorOptions = { validationError: { target: false }, ...options.validator }\n' +
-      '  const { plainToInstance = _plainToInstance, validateOrReject = _validateOrReject } = options\n'
-    : ''
-}${consts}
+  const basePath = options.basePath ?? ''${
+    hasValidator
+      ? `
+  const transformerOptions: ClassTransformOptions = { enableCircularCheck: true, ...options.transformer }
+  const validatorOptions: ValidatorOptions = { validationError: { target: false }, ...options.validator }
+  const { plainToInstance = _plainToInstance, validateOrReject = _validateOrReject } = options
+  const transformAndValidate = async <T>(cls: ClassConstructor<T>, object: unknown, setter: (instance: unknown) => void, wrapperProp?: string): Promise<void> => {
+    const instance = plainToInstance(cls, wrapperProp ? { [wrapperProp]: object } : object, transformerOptions)
+    await validateOrReject(instance as any, validatorOptions)
+    setter(wrapperProp ? (instance as any)[wrapperProp] : instance)
+  }`
+      : ''
+  }
+${consts}
 ${
   hasMultipart
     ? '  fastify.register(multipart, { attachFieldsToBody: true, limits: { fileSize: 1024 ** 3 }, ...options.multipart })\n\n'

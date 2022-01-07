@@ -535,11 +535,11 @@ ${validateInfo
     v.type
       ? `          ${
           v.hasQuestion ? `Object.keys(req.${v.name} as any).length ? ` : ''
-        }validateOrReject(plainToInstance(Validators.${checker.typeToString(v.type)}, ${
-          v.wrapperProp ? `{ ${JSON.stringify(v.wrapperProp)}: ` : ''
-        }req.${v.name}${v.wrapperProp ? ` }` : ''} as any, transformerOptions), validatorOptions)${
-          v.hasQuestion ? ' : null' : ''
-        }`
+        }transformAndValidate(Validators.${checker.typeToString(v.type)}, req.${
+          v.name
+        }, (instance) => { req.${v.name} = instance }${
+          v.wrapperProp ? `, ${JSON.stringify(v.wrapperProp)}` : ''
+        })${v.hasQuestion ? ' : null' : ''}`
       : ''
   )
   .join(',\n')}\n        ])`

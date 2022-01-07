@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer'
+import { Transform, Type } from 'class-transformer'
 import {
   Allow,
   ArrayNotEmpty,
@@ -72,6 +72,7 @@ export class UserInfoPatchName {
   type: 'name'
 
   @MaxLength(20)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : undefined))
   name: string
 }
 
@@ -87,7 +88,7 @@ export class UserInfoPatchWrapper {
   // Boolean is a dummy class, which will be used as default class when no suitable subTypes found
   // invalid types are rejected by combining this with @IsObject
   @IsObject({
-    message: 'invalid type'
+    message: 'type must be either "name" or "age"'
   })
   @ValidateNested()
   @Type(() => Boolean, {

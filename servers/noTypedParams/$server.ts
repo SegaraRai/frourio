@@ -2,7 +2,7 @@
 // prettier-ignore
 import 'reflect-metadata'
 // prettier-ignore
-import { ClassTransformOptions, plainToInstance as _plainToInstance } from 'class-transformer'
+import { ClassConstructor, ClassTransformOptions, plainToInstance as _plainToInstance } from 'class-transformer'
 // prettier-ignore
 import { validateOrReject as _validateOrReject, ValidatorOptions } from 'class-validator'
 // prettier-ignore
@@ -156,6 +156,11 @@ export default (fastify: FastifyInstance, options: FrourioOptions = {}) => {
   const transformerOptions: ClassTransformOptions = { enableCircularCheck: true, ...options.transformer }
   const validatorOptions: ValidatorOptions = { validationError: { target: false }, ...options.validator }
   const { plainToInstance = _plainToInstance, validateOrReject = _validateOrReject } = options
+  const transformAndValidate = async <T>(cls: ClassConstructor<T>, object: unknown, setter: (instance: unknown) => void, wrapperProp?: string): Promise<void> => {
+    const instance = plainToInstance(cls, wrapperProp ? { [wrapperProp]: object } : object, transformerOptions)
+    await validateOrReject(instance as any, validatorOptions)
+    setter(wrapperProp ? (instance as any)[wrapperProp] : instance)
+  }
   const hooks0 = hooksFn0(fastify)
   const hooks1 = hooksFn1(fastify)
   const ctrlHooks0 = ctrlHooksFn0(fastify)
@@ -174,7 +179,7 @@ export default (fastify: FastifyInstance, options: FrourioOptions = {}) => {
     {
       onRequest: [hooks0.onRequest, ctrlHooks0.onRequest],
       preValidation: createValidateHandler(req => [
-          Object.keys(req.query as any).length ? validateOrReject(plainToInstance(Validators.Query, req.query as any, transformerOptions), validatorOptions) : null
+          Object.keys(req.query as any).length ? transformAndValidate(Validators.Query, req.query, (instance) => { req.query = instance }) : null
         ])
     },
     asyncMethodToHandler(controller0.get)
@@ -187,8 +192,8 @@ export default (fastify: FastifyInstance, options: FrourioOptions = {}) => {
       preValidation: [
         formatMultipartData([]),
         createValidateHandler(req => [
-          validateOrReject(plainToInstance(Validators.Query, req.query as any, transformerOptions), validatorOptions),
-          validateOrReject(plainToInstance(Validators.Body, req.body as any, transformerOptions), validatorOptions)
+          transformAndValidate(Validators.Query, req.query, (instance) => { req.query = instance }),
+          transformAndValidate(Validators.Body, req.body, (instance) => { req.body = instance })
         ])
       ]
     },
@@ -210,7 +215,7 @@ export default (fastify: FastifyInstance, options: FrourioOptions = {}) => {
       preValidation: [
         formatMultipartData([['empty', false], ['vals', false], ['files', false]]),
         createValidateHandler(req => [
-          validateOrReject(plainToInstance(Validators.MultiForm, req.body as any, transformerOptions), validatorOptions)
+          transformAndValidate(Validators.MultiForm, req.body, (instance) => { req.body = instance })
         ])
       ]
     },
@@ -255,7 +260,7 @@ export default (fastify: FastifyInstance, options: FrourioOptions = {}) => {
     {
       onRequest: [hooks0.onRequest, hooks1.onRequest],
       preValidation: createValidateHandler(req => [
-          validateOrReject(plainToInstance(Validators.UserInfo, req.body as any, transformerOptions), validatorOptions)
+          transformAndValidate(Validators.UserInfo, req.body, (instance) => { req.body = instance })
         ]),
       preHandler: ctrlHooks1.preHandler
     } as RouteShorthandOptions,
